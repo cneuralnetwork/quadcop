@@ -133,7 +133,29 @@ class QuadEnv(mujoco_env.MujocoEnv,utils.EzPickle,ABC):
     def check_bound(self,err:np.ndarray)->bool:
         return self.l2norm(err)<self.l2norm_bounding_box
     
+    #checking progress
+    def chk_prog(self,obs:np.ndarray)->bool:
+        return not (np.isfinite(obs).all() and self.check_bound(obs[:3]) and self.time<self.max_time_steps)
     
+    #state of body wrt to intertial frame
+    def get_bd_state(self,body:str)->Tuple[np.ndarray,np.ndarray,np.ndarray,np.ndarray]:
+        xyz=self.data.get_body_xpos(body).copy()
+        mat=self.data.get_body_xmat(body).flatten().copy()
+        lin_vel=self.data.get_body_xvelp(body).copy()
+        ang_vel=self.data.get_body_xvelr(body).copy()
+        return xyz,mat,lin_vel,ang_vel
+    
+    #penalty and reward(both bonus!)
+    def bonus_rew(self,err:np.ndarray)-> float:
+        bonus=0.0
+        if self.goal_check(err):
+            bonus+=self.bonus_reach
+        return bonus
+    def pen_rew(self,err:np.ndarray)->float:
+        pen=0.0
+        if not self.check_bound(err):
+            pen+=self.bonus_reach
+        return pen
 
 
 
