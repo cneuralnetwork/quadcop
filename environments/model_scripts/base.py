@@ -5,6 +5,8 @@ import numpy as np
 from gym import spaces
 from gym import utils
 from gym.envs.mujoco import mujoco_env
+from helperfuncs.utils import quaternion2euler
+MOD=1e-6
 
 class QuadEnv(mujoco_env.MujocoEnv,utils.EzPickle,ABC):
     action_thrust=np.arange(0,4)
@@ -21,12 +23,14 @@ class QuadEnv(mujoco_env.MujocoEnv,utils.EzPickle,ABC):
                  random_start=True,
                  disorient=True,
                  obs_noise=0,
+                 red_head_err=True,
                  env_bound=1.2,
-                 initial_max_vel=0.5,
+                 sample_so3=False,
+                 initial_max_lin_vel=0.5,
                  initial_max_angular_vel=0.1*np.pi,
                  initial_max_alt=np.pi/3.0,
                  bonus_reach=15.0,
-                 max_reward=2.0,
+                 max_reward_vel=2.0,
                  pos_reward_const=5.0,
                  orient_reward_const=0.02,
                  linear_vel_reward_const=0.01,
@@ -43,11 +47,11 @@ class QuadEnv(mujoco_env.MujocoEnv,utils.EzPickle,ABC):
         self.linear_vel_reward_const=linear_vel_reward_const
         self.orient_reward_const=orient_reward_const
         self.pos_reward_const=pos_reward_const
-        self.max_reward=max_reward
+        self.max_reward_vel=max_reward_vel
         self.bonus_reach=bonus_reach
         self.initial_max_alt=initial_max_alt
         self.initial_max_angular_vel=initial_max_angular_vel
-        self.initial_max_vel=initial_max_vel
+        self.initial_max_lin_vel=initial_max_lin_vel
         self.env_bound=env_bound
         self.obs_noise=obs_noise
         self.disorient=disorient
@@ -55,6 +59,8 @@ class QuadEnv(mujoco_env.MujocoEnv,utils.EzPickle,ABC):
         self.max_time_steps=max_time_steps
         self.error_tolerance=error_tolerance
         self.frame_skip=frame_skip
+        self.red_head_err=red_head_err
+        self.sample_so3=sample_so3
 
         #additional stuff
         self.policy_range=[-1.0,1.0]
@@ -67,6 +73,8 @@ class QuadEnv(mujoco_env.MujocoEnv,utils.EzPickle,ABC):
         self.mujoco_qvel=None
         self.prev_robot_obs=None
         self.curr_robot_obs=None
+        self.prev_quat=None
+        self.curr_quat=None
 
         self._time_count=0.0
         self.grav=-9.81
@@ -156,6 +164,26 @@ class QuadEnv(mujoco_env.MujocoEnv,utils.EzPickle,ABC):
         if not self.check_bound(err):
             pen+=self.bonus_reach
         return pen
+    
+    #rew vel for goal
+    def rew_vel_for_goal(self,err:np.ndarray,vel:np.ndarray):
+        if self.goal_check(err):
+            return self.max_reward_vel
+        unit=err/(self.l2norm(err)+MOD)
+        vel_dir=vel/(self.l2norm(vel)+MOD)
+        rew=np.dot(unit,vel_dir)
+        return np.clip(rew,-np.inf,self.max_reward_vel)
+    
+    #errors
+    def orient_error(self,q:np.ndarray)->float:
+        err=0.0
+        rp=quaternion2euler(q)
+        if self.red_head_err:
+            err+=self.l2norm(rp)
+        else:
+            err+=self.l2norm(rp[:2])
+
+        return err
 
 
 
