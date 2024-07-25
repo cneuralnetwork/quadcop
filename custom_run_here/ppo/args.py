@@ -1,0 +1,42 @@
+import argparse
+import torch
+
+def get_args():
+    parser = argparse.ArgumentParser(description='Policy for DRL')
+    parser.add_argument('--algo', default='ppo', help='use ppo')
+    parser.add_argument('--lr', type=float, default=5e-5, help='learning rate')
+    parser.add_argument('--eps',type=float,default=1e-5,help='RMSprop optimizer epsilon')
+    parser.add_argument('--alpha',type=float,default=0.99,help='RMSprop optimizer alpha')
+    parser.add_argument('--gamma',type=float,default=0.99,help='discount factor for rewards (default: 0.99)')
+    parser.add_argument('--use-gae', action='store_true', default=False, help='use generalized advantage estimation')
+    parser.add_argument('--gae-lambda', type=float, default=0.95, help='gae lambda parameter (default: 0.95)')
+    parser.add_argument('--entropy-coef', type=float, default=0.01, help='entropy term coefficient (default: 0.01)')
+    parser.add_argument('--value-loss-coef', type=float, default=0.5, help='value loss coefficient (default: 0.5)')
+    parser.add_argument('--max-grad-norm', type=float, default=0.5, help='max norm of gradients (default: 0.5)')
+    parser.add_argument('--seed', type=int, default=1, help='random seed')
+    parser.add_argument('--cuda-deterministic', action='store_true', default=False, help="sets flags for determinism when using CUDA")
+    parser.add_argument('--num-processes', type=int, default=1, help='how many training CPU processes to use')
+    parser.add_argument('--num-steps', type=int, default=5, help='number of forward steps in A2C/PPO')
+    parser.add_argument('--ppo-epoch', type=int, default=4, help='number of ppo epochs')
+    parser.add_argument('--num-mini-batch', type=int, default=32, help='number of batches for ppo')
+    parser.add_argument('--clip-param', type=float, default=0.1, help='ppo clip parameter')
+    parser.add_argument('--log-interval', type=int, default=1, help='log interval, one log per n updates')
+    parser.add_argument('--save-interval', type=int, default=100, help='save interval, one save per n updates')
+    parser.add_argument('--eval-interval', type=int, default=None, help='eval interval, one eval per n updates')
+    parser.add_argument('--num-env-steps',type=int,default=20e6,help='number of environment steps to train')
+    parser.add_argument('--env-name',fault='QuadrotorPlusHoverEnv-v0',help='environment on which training will happen')
+    parser.add_argument('--log-dir',default='./experiments_data/logs',help='directory to save agent logs')
+    parser.add_argument('--save-dir',default='./experiments_data/trained_models/',help='directory to save agent infos/logs')
+    parser.add_argument('--no-cuda',action='store_true',default=False,help='disables CUDA training')
+    parser.add_argument('--use-proper-time-limits',action='store_true',default=True,help='compute returns taking into account time limits')
+    parser.add_argument('--recurrent-policy',action='store_true',default=False,help='use a recurrent policy')
+    parser.add_argument('--use-linear-lr-decay',action='store_true',default=False,help='use a linear form on the learning rate')
+    parser.add_argument('--exp-dir',action='store_true',default='exp_',help='experiment directory name (use for tensorboard)')
+    parser.add_argument('--hidden-size',type=int,default=64,help='number of neurons in hidden layer of actor (default: 64)')
+    parser.add_argument('--robot-type',default="default",help='type of model to use')
+    args = parser.parse_args()
+
+    args.cuda=not args.no_cuda and torch.cuda.is_available()
+    if args.exp_dir=="exp_":
+        args.exp_dir = "./runs/" + args.exp_dir + args.env_name + "_" + str(args.seed)
+    return args
